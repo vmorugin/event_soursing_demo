@@ -22,8 +22,9 @@ readme = "README.md"
 include = ["my_new_project/py.typed"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
-eventsourcing = { version = "~9.2.14" }
+python = "^3.10"
+eventsourcing = {extras = ["crypto", "postgres"], version = "^9.3.2"}
+pydantic = "^2.9.2"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }
