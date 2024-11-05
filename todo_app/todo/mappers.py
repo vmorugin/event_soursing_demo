@@ -9,9 +9,7 @@ from eventsourcing.persistence import (
     StoredEvent,
 )
 from eventsourcing.utils import get_topic, resolve_topic
-
-if TYPE_CHECKING:  # pragma: nocover
-    from eventsourcing.domain import DomainEventProtocol
+from eventsourcing.domain import DomainEventProtocol
 
 
 class PydanticMapper(Mapper):

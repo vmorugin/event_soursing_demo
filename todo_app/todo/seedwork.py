@@ -13,12 +13,20 @@ class DomainEvent(BaseModel):
     originator_version: int
     timestamp: dt.datetime
 
+    @property
+    def originator_id(self) -> UUID:
+        return self.originator_id
+
+    @property
+    def originator_version(self) -> int:
+        return self.originator_version
+
     class Config:
         frozen = True
 
-
-class TodoDomainEvent(DomainEvent):
-    pass
+class DomainCommand(BaseModel):
+    class Config:
+        frozen = True
 
 
 class Aggregate(BaseModel):
@@ -54,3 +62,20 @@ class Snapshot(BaseModel):
 
 def create_timestamp() -> dt.datetime:
     return dt.datetime.now(tz=dt.timezone.utc)
+
+
+TAggregate = t.TypeVar("TAggregate", bound=Aggregate)
+MutatorFunction = t.Callable[..., t.Optional[TAggregate]]
+
+
+def aggregate_projector(
+        mutator: MutatorFunction[TAggregate],
+) -> t.Callable[[TAggregate | None, t.Iterable[DomainEvent]], TAggregate | None]:
+    def project_aggregate(
+            aggregate: TAggregate | None, events: t.Iterable[DomainEvent]
+    ) -> TAggregate | None:
+        for event in events:
+            aggregate = mutator(event, aggregate)
+        return aggregate
+
+    return project_aggregate

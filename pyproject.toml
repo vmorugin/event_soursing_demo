@@ -19,12 +19,13 @@ classifiers = [
 readme = "README.md"
 #homepage = ""
 #repository = ""
-include = ["my_new_project/py.typed"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
 eventsourcing = {extras = ["crypto", "postgres"], version = "^9.3.2"}
 pydantic = "^2.9.2"
+sqlalchemy = "^2.0.36"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }

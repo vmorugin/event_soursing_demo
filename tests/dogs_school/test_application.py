@@ -10,8 +10,14 @@ def test_dog_school() -> None:
 
     # Call application command methods.
     app.register_dog("Fido")
-    for i in range(20):
-        app.add_trick("Fido", str(uuid.uuid4()))
-
     assert app.get_dog("Fido")
+
+def test_add_trick():
+    app = DogSchool()
+    app.register_dog('Fido')
+    tricks = [str(uuid.uuid4()) for _ in range(20)]
+    for t in tricks:
+        app.add_trick("Fido", t)
+    fido = app.get_dog("Fido")
+    assert fido['tricks'] == tricks
 

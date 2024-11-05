@@ -4,8 +4,6 @@ import pytest
 
 from school.domainmodel import (
     DogAggregate,
-    Registered,
-    Trick,
 )
 
 
@@ -16,20 +14,20 @@ class TestModel:
         assert isinstance(dog.id, UUID)
 
     def test_register(self):
-        dog = DogAggregate.register('Fluff')
+        dog = DogAggregate('Fluff')
         events = list(dog.collect_events())
         assert len(events) == 1
         event = events.pop()
-        assert isinstance(event, Registered)
+        assert isinstance(event, DogAggregate.Registered)
         assert event.name == 'Fluff'
 
     def test_add_item(self):
         dog = DogAggregate('Fluff')
         dog.add_trick('jump')
-        assert dog.tricks == (Trick('jump'),)
+        assert dog.tricks == ['jump']
 
     def test_mutate(self):
-        dog = DogAggregate.register('Fluff')
+        dog = DogAggregate('Fluff')
         dog.add_trick('jump')
         copy = None
         for event in dog.collect_events():
@@ -37,18 +35,20 @@ class TestModel:
 
         assert copy == dog
 
+    @pytest.mark.xfail(reason="The example is mutable!")
     def test_immutable_name(self):
-        dog = DogAggregate.register('Fluff')
+        dog = DogAggregate('Fluff')
         with pytest.raises(AttributeError):
             dog.name = 'Buff'
         assert dog.name == 'Fluff'
 
+    @pytest.mark.xfail(reason="The example is mutable!")
     def test_immutable_tricks(self):
-        dog = DogAggregate.register('Fluff')
+        dog = DogAggregate('Fluff')
         dog.add_trick('trick')
-        assert dog.tricks == (Trick(name='trick'),)
+        assert dog.tricks == ['trick']
         with pytest.raises(AttributeError):
-            dog.tricks = ()
+            dog.tricks = []
 
     def test_create_id(self):
         dog = DogAggregate.create_id('Name')

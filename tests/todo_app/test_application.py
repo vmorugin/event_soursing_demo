@@ -9,8 +9,8 @@ from eventsourcing.application import (
 
 from todo.application import (
     TodoApp,
-    ITodoApp,
 )
+from todo.abstractions import ITodoApp
 from todo.domainmodel import (
     Item,
     ItemStatus,

@@ -1,5 +1,3 @@
-import abc
-from contextlib import suppress
 from typing import (
     Any,
     List,
@@ -8,7 +6,6 @@ from uuid import UUID
 
 from eventsourcing.application import (
     Application,
-    Repository,
 )
 from eventsourcing.domain import (
     MutableOrImmutableAggregate,
@@ -20,38 +17,15 @@ from eventsourcing.persistence import (
     Recording,
 )
 
+from todo.abstractions import ITodoApp
 from todo.domainmodel import (
     Todo,
-    mutate,
     project_todo,
 )
 from todo.seedwork import (
-    TodoDomainEvent,
     Snapshot,
 )
 from todo.mappers import PydanticMapper
-
-
-class ITodoApp(abc.ABC):
-    @abc.abstractmethod
-    def create_todo(self, title: str) -> UUID:
-        ...
-
-    @abc.abstractmethod
-    def get_todo(self, todo_id: UUID) -> Todo:
-        ...
-
-    @abc.abstractmethod
-    def add_item(self, todo_id: UUID, title: str):
-        ...
-
-    @abc.abstractmethod
-    def remove_item(self, todo_id: UUID, item_id: UUID):
-        ...
-
-    @abc.abstractmethod
-    def done_item(self, todo_id: UUID, item_id: UUID):
-        ...
 
 
 class TodoApp(ITodoApp, Application):
@@ -103,5 +77,5 @@ class TodoApp(ITodoApp, Application):
                     record.domain_event.originator_id,
                     record.domain_event.originator_version,
                     projector_func=project_todo
-                    )
+                )
         return records

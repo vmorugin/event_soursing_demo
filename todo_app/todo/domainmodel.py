@@ -17,27 +17,15 @@ from pydantic import (
 )
 from todo.seedwork import (
     DomainEvent,
-    TodoDomainEvent,
     Aggregate,
     Snapshot,
     create_timestamp,
+    aggregate_projector,
 )
 
-TAggregate = t.TypeVar("TAggregate", bound=Aggregate)
-MutatorFunction = t.Callable[..., t.Optional[TAggregate]]
 
-
-def aggregate_projector(
-        mutator: MutatorFunction[TAggregate],
-) -> t.Callable[[TAggregate | None, t.Iterable[DomainEvent]], TAggregate | None]:
-    def project_aggregate(
-            aggregate: TAggregate | None, events: t.Iterable[DomainEvent]
-    ) -> TAggregate | None:
-        for event in events:
-            aggregate = mutator(event, aggregate)
-        return aggregate
-
-    return project_aggregate
+class TodoDomainEvent(DomainEvent):
+    pass
 
 
 class ItemStatus(str, Enum):
@@ -51,6 +39,7 @@ class Created(TodoDomainEvent):
 
 class ItemAdded(TodoDomainEvent):
     item: Item
+
 
 class ItemRemoved(TodoDomainEvent):
     item_id: UUID
@@ -90,7 +79,6 @@ class Todo(Aggregate):
 
     def collect_items(self) -> t.Iterable[Item]:
         return list(self.items.values())
-
 
     def add_item(self, title: str) -> ItemAdded:
         return ItemAdded(
@@ -145,6 +133,7 @@ def _(event: ItemAdded, todo: Todo) -> Todo:
     )
     return todo
 
+
 @mutate.register
 def _(event: ItemRemoved, todo: Todo) -> Todo:
     todo = Todo(
@@ -158,6 +147,7 @@ def _(event: ItemRemoved, todo: Todo) -> Todo:
     if event.item_id in todo.items:
         todo.items.pop(event.item_id)
     return todo
+
 
 @mutate.register
 def _(event: ItemMarkedDown, todo: Todo) -> Todo:

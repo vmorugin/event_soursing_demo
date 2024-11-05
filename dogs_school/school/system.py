@@ -14,10 +14,8 @@ from eventsourcing.domain import (
     DomainEventProtocol,
 )
 from eventsourcing.system import ProcessApplication
-from school.domainmodel import (
-    Registered,
-    TrickAdded,
-)
+
+from school.domainmodel import DogAggregate
 
 
 class Counters(ProcessApplication):
@@ -26,8 +24,8 @@ class Counters(ProcessApplication):
         """Default policy"""
         ...
 
-    @policy.register(Registered)
-    def _(self, domain_event: Registered, process_event):
+    @policy.register
+    def _(self, domain_event: DogAggregate.Registered, process_event):
         name = domain_event.name
         try:
             counter_id = Counter.create_id(name)
@@ -37,9 +35,9 @@ class Counters(ProcessApplication):
         counter.increment()
         process_event.collect_events(counter)
 
-    @policy.register(TrickAdded)
-    def _(self, domain_event: TrickAdded, process_event):
-        trick = domain_event.name
+    @policy.register
+    def _(self, domain_event: DogAggregate.TrickAdded, process_event):
+        trick = domain_event.trick_name
         try:
             counter_id = Counter.create_id(trick)
             counter = self.repository.get(counter_id)
@@ -56,12 +54,6 @@ class Counters(ProcessApplication):
             return 0
         return counter.count
 
-class Printers(ProcessApplication):
-
-    def policy(self, domain_event: DomainEventProtocol, processing_event: ProcessingEvent) -> None:
-        print(f'Process! {domain_event}')
-
-
 class Counter(Aggregate):
     def __init__(self, name):
         self.name = name
@@ -74,3 +66,9 @@ class Counter(Aggregate):
     @event('Incremented')
     def increment(self):
         self.count += 1
+
+
+class Printers(ProcessApplication):
+
+    def policy(self, domain_event: DomainEventProtocol, processing_event: ProcessingEvent) -> None:
+        print(f'Process! {domain_event}')

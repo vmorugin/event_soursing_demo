@@ -1,16 +1,10 @@
 from uuid import UUID
 
-from eventsourcing.application import Application
-
-from school.application import IDogSchool
+from school.application import DogSchool
 
 
 class DogService:
-    def __init__(
-            self,
-            dog_school: IDogSchool | Application,
-            extra_dep: bool,
-    ):
+    def __init__(self, dog_school: DogSchool, extra_dep: bool):
         self._dog_school = dog_school
         self._extra_dep = extra_dep
 

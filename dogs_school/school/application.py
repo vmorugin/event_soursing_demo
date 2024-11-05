@@ -12,12 +12,8 @@ from eventsourcing.application import (
     Application,
     AggregateNotFoundError,
 )
-from eventsourcing.persistence import (
-    Mapper,
-)
 
 from .domainmodel import DogAggregate
-from .transcoders import TrickAsDict
 
 class IDogSchool(ABC):
     @abc.abstractmethod
@@ -40,7 +36,7 @@ class DogSchool(IDogSchool, Application):
         try:
             dog = self.repository.get(DogAggregate.create_id(name))
         except AggregateNotFoundError:
-            dog = DogAggregate.register(name)
+            dog = DogAggregate(name)
             self.save(dog)
         return dog.id
 
@@ -53,12 +49,7 @@ class DogSchool(IDogSchool, Application):
     def get_dog(self, dog_name: str) -> Dict[str, Any]:
         dog_id = DogAggregate.create_id(dog_name)
         dog = self.repository.get(dog_id)
-        return {"name": dog.name, "tricks": tuple(dog.tricks)}
+        return {"name": dog.name, "tricks": dog.tricks}
 
     def get_snapshot(self, dog_id: UUID):
         return self.snapshots.get(dog_id)
-
-    def construct_mapper(self) -> Mapper:
-        mapper = super().construct_mapper()
-        mapper.transcoder.register(TrickAsDict())
-        return mapper
