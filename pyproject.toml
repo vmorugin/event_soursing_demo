@@ -26,6 +26,11 @@ python = "^3.10"
 eventsourcing = {extras = ["crypto", "postgres"], version = "^9.3.2"}
 pydantic = "^2.9.2"
 sqlalchemy = "^2.0.36"
+dddmisc-core = "^0.7.0"
+dddmisc-domain = "^0.6.0"
+dddmisc-unit-of-work = "^0.3.2"
+dddmisc-handlers-collection = "^0.6.0"
+dddmisc-messagebus = "^0.7.0"
 
 [tool.poetry.dev-dependencies]
 black = { version = "*", allow-prereleases = true }
@@ -41,6 +46,7 @@ pre-commit = "*"
 pre-commit-hooks = "*"
 pytest = "*"
 pytest-cov = "*"
+pytest-aio = "^1.9.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

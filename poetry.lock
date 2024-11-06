@@ -190,6 +190,78 @@ tomli = {version = "*", optional = true, markers = "python_full_version <= \"3.1
 toml = ["tomli"]
 
 [[package]]
+name = "dddmisc-core"
+version = "0.7.0"
+description = "This package provides the core interfaces and types for dddmisc packages family"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "dddmisc_core-0.7.0-py3-none-any.whl", hash = "sha256:b64bd21702f2cd262ac3d6c30259efb7a5ddb41e2710a819d3553c09d5f2a70e"},
+    {file = "dddmisc_core-0.7.0.tar.gz", hash = "sha256:41f8e73da200e9d2b7873ae50beec9d01ddf24393bbd5885d6d9c767676b8c80"},
+]
+
+[package.dependencies]
+pydantic = ">=2.1.0,<3.0.0"
+
+[[package]]
+name = "dddmisc-domain"
+version = "0.6.0"
+description = "This package provides implementation domain's objects classes"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "dddmisc_domain-0.6.0-py3-none-any.whl", hash = "sha256:b96c1562ef92a59d590ab3ad334fc2ea29f23181d492bd068f95fb92d4021fee"},
+    {file = "dddmisc_domain-0.6.0.tar.gz", hash = "sha256:dfcdec6029676caec84c9752eab38d0febc25d9560a2a5edb1fafa8714c1aab6"},
+]
+
+[package.dependencies]
+dddmisc-core = ">=0.7.0,<0.8.0"
+pydantic = ">=2.1.0,<3.0.0"
+
+[[package]]
+name = "dddmisc-handlers-collection"
+version = "0.6.0"
+description = "This package provides implementation a collection of command’s and event’s handlers"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "dddmisc_handlers_collection-0.6.0-py3-none-any.whl", hash = "sha256:6e7b8fb161be340fd41ed3bd5919c1bef02c2b7453e2a850190553e2c6a58cec"},
+    {file = "dddmisc_handlers_collection-0.6.0.tar.gz", hash = "sha256:2caf5f6608bf35b42be9db2c80f96981632d477b53e9e62a708f07d5c13e2be1"},
+]
+
+[package.dependencies]
+dddmisc-core = ">=0.7.0,<0.8.0"
+tenacity = ">=8.0.0,<9.0.0"
+
+[[package]]
+name = "dddmisc-messagebus"
+version = "0.7.0"
+description = "This package provides the implementation messagebus"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "dddmisc_messagebus-0.7.0-py3-none-any.whl", hash = "sha256:518c0ab45e1081ae6c872734eb51b2b849551e5e12100bc14dccf3a1f1aa9ef7"},
+    {file = "dddmisc_messagebus-0.7.0.tar.gz", hash = "sha256:49b5c627bfa54a15e63aae7e3c33d5c6ffa064326392fc7d5bd2b98103269fd1"},
+]
+
+[package.dependencies]
+dddmisc-core = ">=0.7.0,<0.8.0"
+
+[[package]]
+name = "dddmisc-unit-of-work"
+version = "0.3.2"
+description = "This package provides the implementation pattern 'unit of work'"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "dddmisc_unit_of_work-0.3.2-py3-none-any.whl", hash = "sha256:8ef62f89880c8df4f4bb8339f34aa91ba46d829408a8f5e217e162c4cab704d8"},
+    {file = "dddmisc_unit_of_work-0.3.2.tar.gz", hash = "sha256:5aef2f1d904656eebd0a4b939082113be08accc239ef1cd5cc292fa1b8e7d3a3"},
+]
+
+[package.dependencies]
+dddmisc-core = ">=0.7.0,<0.8.0"
+
+[[package]]
 name = "distlib"
 version = "0.3.9"
 description = "Distribution utilities"
@@ -220,22 +292,6 @@ typing_extensions = "*"
 crypto = ["pycryptodome (>=3.20,<3.21)"]
 docs = ["Sphinx", "orjson", "pydantic", "sphinx_rtd_theme"]
 postgres = ["psycopg[c,pool] (<=3.2.1)"]
-
-[[package]]
-name = "eventsourcing-sqlalchemy"
-version = "0.9"
-description = "Python package for eventsourcing with SQLAlchemy."
-optional = false
-python-versions = "<4.0,>=3.8"
-files = [
-    {file = "eventsourcing_sqlalchemy-0.9-py3-none-any.whl", hash = "sha256:01c16a31342013750d2b6ce2cbcaf8a082ce4435ddea0cca6b614c4730fbfda9"},
-    {file = "eventsourcing_sqlalchemy-0.9.tar.gz", hash = "sha256:04ad8fb670f8d530ed7d18dc1644ff73bc3a472fa0983a6825a58d58df685a9a"},
-]
-
-[package.dependencies]
-eventsourcing = ">=9.3,<9.4"
-sqlalchemy = ">=1.4.26,<2.1"
-SQLAlchemy-Utils = ">=0.38.2"
 
 [[package]]
 name = "exceptiongroup"
@@ -917,6 +973,25 @@ tomli = {version = ">=1", markers = "python_version < \"3.11\""}
 dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
 [[package]]
+name = "pytest-aio"
+version = "1.9.0"
+description = "Pytest plugin for testing async python code"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "pytest_aio-1.9.0-py3-none-any.whl", hash = "sha256:12a72816224863d402921b325086b398df8a0f4ca767639968a8097d762ac548"},
+    {file = "pytest_aio-1.9.0.tar.gz", hash = "sha256:aa72e6ca4672b7f5a08ce44e7c6254dca988d3d578bf0c9485a47c3bff393ac1"},
+]
+
+[package.dependencies]
+pytest = "*"
+
+[package.extras]
+curio = ["curio-compat"]
+trio = ["trio"]
+uvloop = ["uvloop"]
+
+[[package]]
 name = "pytest-cov"
 version = "6.0.0"
 description = "Pytest plugin for measuring coverage."
@@ -1160,32 +1235,19 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
-name = "sqlalchemy-utils"
-version = "0.41.2"
-description = "Various utility functions for SQLAlchemy."
+name = "tenacity"
+version = "8.5.0"
+description = "Retry code until it succeeds"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "SQLAlchemy-Utils-0.41.2.tar.gz", hash = "sha256:bc599c8c3b3319e53ce6c5c3c471120bd325d0071fb6f38a10e924e3d07b9990"},
-    {file = "SQLAlchemy_Utils-0.41.2-py3-none-any.whl", hash = "sha256:85cf3842da2bf060760f955f8467b87983fb2e30f1764fd0e24a48307dc8ec6e"},
+    {file = "tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687"},
+    {file = "tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78"},
 ]
 
-[package.dependencies]
-SQLAlchemy = ">=1.3"
-
 [package.extras]
-arrow = ["arrow (>=0.3.4)"]
-babel = ["Babel (>=1.3)"]
-color = ["colour (>=0.0.4)"]
-encrypted = ["cryptography (>=0.6)"]
-intervals = ["intervals (>=0.7.1)"]
-password = ["passlib (>=1.6,<2.0)"]
-pendulum = ["pendulum (>=2.0.5)"]
-phone = ["phonenumbers (>=5.9.2)"]
-test = ["Jinja2 (>=2.3)", "Pygments (>=1.2)", "backports.zoneinfo", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "isort (>=4.2.2)", "pg8000 (>=1.12.4)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-test-all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "backports.zoneinfo", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-timezone = ["python-dateutil"]
-url = ["furl (>=0.4.1)"]
+doc = ["reno", "sphinx"]
+test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
 name = "tomli"
@@ -1243,4 +1305,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "d33bad923a012ba2aa3c65806f674a4921ec16bb8f0bc1dbb743cf8cdc38ddc3"
+content-hash = "997fb7f6a7ca872791d91d5690fc3c332a62ec6ae064c9e34b82d6a227be7a52"

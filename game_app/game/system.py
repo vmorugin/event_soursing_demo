@@ -21,7 +21,30 @@ from sqlalchemy import Engine
 from game.domainmodel import Player
 
 
+class HighScoreTable(Aggregate):
+    def __init__(self):
+        self.scores: dict[str, tuple[str, int]] = {}
+
+    @classmethod
+    def create_id(cls) -> UUID:
+        return uuid5(NAMESPACE_URL, '/high_score_table')
+
+    @event('PlayerRegistered')
+    def register(self, player_id: UUID, name: str):
+        self.scores[str(player_id)] = (name, 0)
+
+    @event("HighScoreTableUpdated")
+    def increment_score(self, player_id: UUID, score: int):
+        self.scores[str(player_id)] = self.scores[str(player_id)][0], self.scores[str(player_id)][1] + score
+
+    def get_top(self):
+        return sorted(self.scores.values(), key=lambda x: x[1], reverse=True)
+
+
 class HallOfFame(ProcessApplication):
+    is_snapshotting_enabled = True
+    snapshotting_intervals = {HighScoreTable: 100, Player: 100}
+
     @singledispatchmethod
     def policy(self, domain_event: DomainEventProtocol, processing_event: ProcessingEvent) -> None:
         ...
@@ -54,30 +77,11 @@ class HallOfFame(ProcessApplication):
         return table.get_top()
 
 
-class HighScoreTable(Aggregate):
-    def __init__(self):
-        self.scores: dict[UUID, tuple[str, int]] = {}
-
-    @classmethod
-    def create_id(cls) -> UUID:
-        return uuid5(NAMESPACE_URL, '/high_score_table')
-
-    @event('PlayerRegistered')
-    def register(self, player_id: UUID, name: str):
-        self.scores[player_id] = (name, 0)
-
-    @event("HighScoreTableUpdated")
-    def increment_score(self, player_id: UUID, score: int):
-        self.scores[player_id] = self.scores[player_id][0], self.scores[player_id][1] + score
-
-    def get_top(self):
-        return sorted(self.scores.values(), key=lambda x: x[1], reverse=True)[:3]
-
-
 class HallOfFameMaterialize(ProcessApplication):
     def __init__(self, env: dict):
         self.engine: Engine = env['postgresql_engine']  # todo: should be smth like a dishka container
-        self.high_score = HallOfFame(env)
+        self.high_score = HallOfFame(env)  # todo: Here must be an adapter
+        # self.adapter: IHallOfFameAdapter = env['container'].get(IHallOfFameAdapter)
         super().__init__(env)
 
     @singledispatchmethod
@@ -88,8 +92,8 @@ class HallOfFameMaterialize(ProcessApplication):
         """
         pass
 
-    @policy.register(HighScoreTable.HighScoreTableUpdated)
-    def _(self, domain_event: DomainEventProtocol, processing_event: ProcessingEvent) -> None:
+    @policy.register
+    def _(self, domain_event: HighScoreTable.HighScoreTableUpdated, processing_event: ProcessingEvent) -> None:
         """
         Re-create a state of an aggregate and write denormalized view
         Example bellow

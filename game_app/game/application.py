@@ -7,7 +7,7 @@ from game.domainmodel import Player
 
 
 class Game(Application):
-    snapshotting_intervals = {Player: 10}
+    snapshotting_intervals = {Player: 100}
     is_snapshotting_enabled = True
 
     def register(self, name: str):
