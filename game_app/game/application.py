@@ -18,10 +18,10 @@ class Game(Application):
             player = self.repository.get(Player.create_id(name))
         return player.id
 
-    def get(self, player_id: UUID) -> Player:
-        return self.repository.get(player_id)
-
     def add_score(self, player_id: UUID, score: int):
         player = self.repository.get(player_id)
         player.add_score(score)
         self.save(player)
+
+    def get(self, player_id: UUID) -> Player:
+        return self.repository.get(player_id)

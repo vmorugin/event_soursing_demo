@@ -69,9 +69,9 @@ def test_system(multi_thread_persistence_runner):
     kate = game.register("Kate")
     lui = game.register("Lui")
 
-    game.add_score(john, 10)
     game.add_score(alice, 20)
     game.add_score(kate, 15)
+    game.add_score(john, 10)
     game.add_score(lui, 5)
 
     score_table = multi_thread_persistence_runner.get(HallOfFame)

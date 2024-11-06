@@ -96,6 +96,10 @@ class HallOfFameMaterialize(Follower):
 
     @policy.register
     def _(self, domain_event: HighScoreTable.PlayerRegistered, processing_event: ProcessingEvent) -> None:
+        """
+        Re-create a state of an aggregate and write denormalized view
+        Example bellow
+        """
         with self.engine.begin() as conn:
             conn.execute(
                 sa.text(
