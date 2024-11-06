@@ -1,4 +1,5 @@
 from functools import singledispatchmethod
+
 import sqlalchemy as sa
 from uuid import (
     UUID,
@@ -15,7 +16,10 @@ from eventsourcing.domain import (
     Aggregate,
     event,
 )
-from eventsourcing.system import ProcessApplication
+from eventsourcing.system import (
+    ProcessApplication,
+    Follower,
+)
 from sqlalchemy import Engine
 
 from game.domainmodel import Player
@@ -77,11 +81,10 @@ class HallOfFame(ProcessApplication):
         return table.get_top()
 
 
-class HallOfFameMaterialize(ProcessApplication):
+class HallOfFameMaterialize(Follower):
+
     def __init__(self, env: dict):
         self.engine: Engine = env['postgresql_engine']  # todo: should be smth like a dishka container
-        self.high_score = HallOfFame(env)  # todo: Here must be an adapter
-        # self.adapter: IHallOfFameAdapter = env['container'].get(IHallOfFameAdapter)
         super().__init__(env)
 
     @singledispatchmethod
@@ -90,7 +93,22 @@ class HallOfFameMaterialize(ProcessApplication):
         For example
         Here you can publish domain event to RMQ, parse in external service and record the replica-view database.
         """
-        pass
+
+    @policy.register
+    def _(self, domain_event: HighScoreTable.PlayerRegistered, processing_event: ProcessingEvent) -> None:
+        with self.engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    """
+                    INSERT INTO 
+                    high_score (name, player_id, score) 
+                    VALUES (:name, :player_id, 0)
+                    ON CONFLICT (player_id) DO UPDATE
+                    SET name = :name 
+                    """
+                ), {'name': domain_event.name, 'player_id': domain_event.player_id}
+            )
+        processing_event.collect_events(domain_event)
 
     @policy.register
     def _(self, domain_event: HighScoreTable.HighScoreTableUpdated, processing_event: ProcessingEvent) -> None:
@@ -98,16 +116,15 @@ class HallOfFameMaterialize(ProcessApplication):
         Re-create a state of an aggregate and write denormalized view
         Example bellow
         """
-        for name, score in self.high_score.get_top():
-            with self.engine.begin() as conn:
-                conn.execute(
-                    sa.text(
-                        """
-                        INSERT INTO 
-                        high_score (score, player_id) 
-                        VALUES (:score, :player_id)
-                        ON CONFLICT (player_id) DO UPDATE
-                        SET score = :score 
-                        """
-                    ), {'score': score, 'player_id': name}
-                )
+        with self.engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    """
+                    INSERT INTO 
+                    high_score (score, name, player_id) 
+                    VALUES (:score, :name, :player_id)
+                    ON CONFLICT (player_id) DO UPDATE
+                    SET score = high_score.score + :score 
+                    """
+                ), {'score': domain_event.score, 'player_id': domain_event.player_id, 'name': None}
+            )

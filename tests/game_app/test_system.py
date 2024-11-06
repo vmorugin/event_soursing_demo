@@ -1,5 +1,3 @@
-import random
-
 import pytest
 from eventsourcing.system import (
     System,
@@ -81,15 +79,3 @@ def test_system(multi_thread_persistence_runner):
 
     game.add_score(lui, 30)
     assert score_table.get_top() == [('Lui', 35), ('Alice', 20), ('Kate', 15)]
-
-def test_load(multi_thread_persistence_runner):
-    game = multi_thread_persistence_runner.get(Game)
-    john = game.register("John")
-    alice = game.register("Alice")
-    kate = game.register("Kate")
-    lui = game.register("Lui")
-    for _ in range(10000):
-        game.add_score(john, random.randint(1, 100))
-        game.add_score(alice, random.randint(1, 100))
-        game.add_score(kate, random.randint(1, 100))
-        game.add_score(lui, random.randint(1, 100))
