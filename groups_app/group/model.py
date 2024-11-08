@@ -11,11 +11,15 @@ from d3m.core import (
     AbstractEvent,
     MessageName,
 )
+from d3m.core.abstractions import AbstractEventMeta
 
 from d3m.domain import (
-    DomainEvent,
     RootEntity,
     get_event_class,
+)
+from d3m.domain.bases import (
+    BaseDomainMessage,
+    BaseDomainMessageMeta,
 )
 from pydantic import (
     BaseModel,
@@ -35,17 +39,31 @@ def set_version(entity: RootEntity, version: int):
 
 ReferenceType = TypeVar("ReferenceType", bound=UUID)
 
+class _DomainEventMeta(BaseDomainMessageMeta, AbstractEventMeta):
+    def __init__(cls, name, bases, namespace, *, domain: str | None = None):
+        super().__init__(name, bases, namespace, domain=domain)
+        if domain is None and cls.__module__ != __name__:
+            try:
+                _ = cls.__domain_name__
+            except AttributeError:
+                raise ValueError(
+                    f"required set domain name for event '{cls.__module__}.{cls.__name__}'"
+                )
 
-class BaseEvent(DomainEvent, domain='group'):
+
+class DomainEvent(BaseDomainMessage, AbstractEvent, metaclass=_DomainEventMeta):
     reference: UUID
     version: int
 
+class GroupDomainEvent(DomainEvent, domain='group'):
+    ...
 
-class GroupCreated(BaseEvent):
+
+class GroupCreated(GroupDomainEvent):
     name: str
 
 
-class GroupRenamed(BaseEvent):
+class GroupRenamed(GroupDomainEvent):
     name: str
 
 
@@ -54,11 +72,11 @@ class GroupMember(BaseModel):
     name: str
 
 
-class GroupMemberAdded(BaseEvent):
+class GroupMemberAdded(GroupDomainEvent):
     member: GroupMember
 
 
-class GroupReassigned(BaseEvent):
+class GroupReassigned(GroupDomainEvent):
     parent_id: ReferenceType
 
 
@@ -102,7 +120,7 @@ class Group(RootEntity, domain='group'):
         event = self.create_event(GroupReassigned.__name__, parent_id=parent_id)
         mutate(event, self)
 
-    def create_event(self, __name: MessageName | str, /, **payload) -> BaseEvent:
+    def create_event(self, __name: MessageName | str, /, **payload) -> DomainEvent:
         event_class = get_event_class(self.__domain_name__, __name)
         event = event_class(
             reference=self.__reference__,
@@ -112,14 +130,14 @@ class Group(RootEntity, domain='group'):
         self._events.append(event)
         return event
 
-    def collect_events(self) -> Iterable[BaseEvent]:
+    def collect_events(self) -> Iterable[DomainEvent]:
         events = self._events
         self._events = []
         yield from events
 
 
 @singledispatch
-def mutate(event: BaseEvent, _: None | Group) -> Group:
+def mutate(event: AbstractEvent, _: None | Group) -> Group:
     raise RuntimeError(f"Unhandled event {event.__class__.__name__}")
 
 
