@@ -1,5 +1,5 @@
 from uuid import UUID
-
+import typing as t
 import pytest
 from black.trans import defaultdict
 from d3m.core import get_messagebus
@@ -11,15 +11,17 @@ from d3m.uow import (
     IUnitOfWorkCtxMgr,
 )
 
+from group.bases import DomainEvent
 from group.model import (
     Group,
-    mutate,
+    GroupMember,
 )
 from group.usecase import (
     IGroupRepository,
     collection,
     CreateGroupCommand,
     ProduceGroupCommand,
+    RenameGroupCommand,
 )
 
 
@@ -35,7 +37,7 @@ class RepositoryBuilder(IRepositoryBuilder):
 
 class FakeRepository(IGroupRepository):
     def __init__(self, engine: dict):
-        self._engine = engine
+        self._event_store = engine
         self._seen: dict[UUID, Group] = {}
 
     def create(self, name: str) -> Group:
@@ -44,29 +46,33 @@ class FakeRepository(IGroupRepository):
         return group
 
     async def get(self, reference: UUID) -> Group:
-        events = self._engine.get(reference)
-        aggregate = None
+        events = self._event_store.get(reference)
+        aggregate = None  # todo: get from snapshot
         for db_event in events:
             event_cls = get_event_class(db_event['domain'], db_event['name'])
-            event = event_cls.load(
+            event = t.cast(
+                DomainEvent, event_cls.load(
                     payload=db_event['payload'],
                     reference=db_event['reference'],
                     timestamp=db_event['timestamp']
                 )
-            aggregate = mutate(event, aggregate)
-            return aggregate
+            )
+            aggregate = event.mutate(aggregate)
+        group = t.cast(Group, aggregate)
+        self._seen[group.__reference__] = group
+        return group
 
     async def commit(self) -> None:
         while self._seen:
             reference, aggregate = self._seen.popitem()
             for event in aggregate.collect_events():
-                self._engine[reference].append(
+                self._event_store[reference].append(
                     dict(
                         reference=event.__reference__,
                         timestamp=event.__timestamp__,
                         domain=event.__domain_name__,
                         name=event.__class__.__name__,
-                        payload=event.model_dump(mode='json'),
+                        payload=event.model_dump(),
                     )
                 )
 
@@ -99,10 +105,35 @@ class TestUsecase:
         assert isinstance(result, UUID)
 
     async def test_create_and_get(self, setup):
-        result = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
-        aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=result))
+        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
+        aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=group_id))
         assert isinstance(aggregate, Group)
         assert aggregate.__version__ == 1
         assert aggregate.state.name == 'test'
         assert aggregate.state.members == {}
         assert aggregate.state.parent_id is None
+
+    async def test_rename(self, setup):
+        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
+        await self._messagebus.handle_message(RenameGroupCommand(reference=group_id, name='new'))
+        aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=group_id))
+        assert isinstance(aggregate, Group)
+        assert aggregate.__version__ == 2
+        assert aggregate.state.name == 'new'
+        assert aggregate.state.members == {}
+        assert aggregate.state.parent_id is None
+
+    async def test_add_member(self, setup):
+        parent_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
+        member_id = await self._messagebus.handle_message(CreateGroupCommand(name='member', parent_id=parent_id))
+        parent = await self._messagebus.handle_message(ProduceGroupCommand(reference=parent_id))
+        member = await self._messagebus.handle_message(ProduceGroupCommand(reference=member_id))
+        assert isinstance(parent, Group)
+        assert parent.__version__ == 2
+        assert parent.state.members == {member_id: GroupMember(reference=member.__reference__, name=member.state.name)}
+        assert parent.state.parent_id is None
+
+        assert isinstance(member, Group)
+        assert member.__version__ == 2
+        assert member.state.members == {}
+        assert member.state.parent_id is parent_id

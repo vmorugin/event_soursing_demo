@@ -5,7 +5,6 @@ from group.model import (
     GroupCreated,
     GroupMember,
     Group,
-    mutate,
 )
 
 
@@ -26,7 +25,7 @@ def test_mutate():
         version=1,
         name='test'
     )
-    group = mutate(event, None)
+    group = event.mutate(None)
     assert isinstance(group, Group)
     assert group.__version__ == 1
     assert group.__reference__ == event.reference
@@ -53,7 +52,7 @@ def test_load_from_events():
     group.reassign(uuid4())
     copy = None
     for event in group.collect_events():
-        copy = mutate(event, copy)
+        copy = event.mutate(copy)
 
     assert copy == group
     assert copy.state == group.state
