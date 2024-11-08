@@ -22,6 +22,7 @@ from group.usecase import (
     CreateGroupCommand,
     ProduceGroupCommand,
     RenameGroupCommand,
+    CreateRootGroupCommand,
 )
 
 
@@ -40,8 +41,8 @@ class FakeRepository(IGroupRepository):
         self._event_store = engine
         self._seen: dict[UUID, Group] = {}
 
-    def create(self, name: str) -> Group:
-        group = Group.create(name)
+    def create(self, name: str, parent_id: UUID | None) -> Group:
+        group = Group.create(name, parent_id=parent_id)
         self._seen[group.__reference__] = group
         return group
 
@@ -99,32 +100,48 @@ class TestUsecase:
     def setup(self, messagebus):
         self._messagebus = messagebus
 
-    async def test_create(self, setup):
-        command = CreateGroupCommand(name='test')
+    async def test_create_root(self, setup):
+        command = CreateRootGroupCommand(name='test')
         result = await self._messagebus.handle_message(command)
         assert isinstance(result, UUID)
 
-    async def test_create_and_get(self, setup):
-        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
-        aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=group_id))
+    async def test_create_root_and_get(self, setup):
+        root_id = await self._messagebus.handle_message(CreateRootGroupCommand(name='test'))
+        aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=root_id))
         assert isinstance(aggregate, Group)
         assert aggregate.__version__ == 1
         assert aggregate.state.name == 'test'
         assert aggregate.state.members == {}
         assert aggregate.state.parent_id is None
 
+    async def test_create_group(self, setup):
+        root_id = await self._messagebus.handle_message(CreateRootGroupCommand(name='test'))
+        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test', parent_id=root_id))
+        assert isinstance(group_id, UUID)
+
+    async def test_create_group_and_get(self, setup):
+        root_id = await self._messagebus.handle_message(CreateRootGroupCommand(name='test'))
+        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test', parent_id=root_id))
+        aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=group_id))
+        assert isinstance(aggregate, Group)
+        assert aggregate.__version__ == 1
+        assert aggregate.state.name == 'test'
+        assert aggregate.state.members == {}
+        assert aggregate.state.parent_id is root_id
+
     async def test_rename(self, setup):
-        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
+        root_id = await self._messagebus.handle_message(CreateRootGroupCommand(name='test'))
+        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='test', parent_id=root_id))
         await self._messagebus.handle_message(RenameGroupCommand(reference=group_id, name='new'))
         aggregate = await self._messagebus.handle_message(ProduceGroupCommand(reference=group_id))
         assert isinstance(aggregate, Group)
         assert aggregate.__version__ == 2
         assert aggregate.state.name == 'new'
         assert aggregate.state.members == {}
-        assert aggregate.state.parent_id is None
+        assert aggregate.state.parent_id is root_id
 
-    async def test_add_member(self, setup):
-        parent_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
+    async def test_create_member(self, setup):
+        parent_id = await self._messagebus.handle_message(CreateRootGroupCommand(name='test'))
         member_id = await self._messagebus.handle_message(CreateGroupCommand(name='member', parent_id=parent_id))
         parent = await self._messagebus.handle_message(ProduceGroupCommand(reference=parent_id))
         member = await self._messagebus.handle_message(ProduceGroupCommand(reference=member_id))
@@ -134,6 +151,6 @@ class TestUsecase:
         assert parent.state.parent_id is None
 
         assert isinstance(member, Group)
-        assert member.__version__ == 2
+        assert member.__version__ == 1
         assert member.state.members == {}
         assert member.state.parent_id is parent_id

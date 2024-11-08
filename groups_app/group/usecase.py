@@ -13,32 +13,38 @@ from group.model import Group
 collection = HandlersCollection()
 
 
-class BaseCommand(DomainCommand, domain='group'):
-    pass
-
-
-class CreateGroupCommand(BaseCommand):
-    parent_id: UUID | None = None
-    name: str
-
-
-class RenameGroupCommand(BaseCommand):
-    name: str
-    reference: UUID
-
-
-class ProduceGroupCommand(BaseCommand):
-    reference: UUID
-
-
 class IGroupRepository(IRepository, abc.ABC):
     @abc.abstractmethod
-    def create(self, name: str) -> Group:
+    def create(self, name: str, parent_id: UUID | None) -> Group:
         ...
 
     @abc.abstractmethod
     async def get(self, reference: UUID) -> Group:
         ...
+
+
+class BaseCommand(DomainCommand, domain='group'):
+    pass
+
+
+class CreateRootGroupCommand(BaseCommand):
+    name: str
+
+
+@collection.register
+async def create_root_group(
+        cmd: CreateRootGroupCommand,
+        uow_builder: UnitOfWorkBuilder[IGroupRepository],
+):
+    async with uow_builder() as uow:
+        group = uow.repository.create(name=cmd.name, parent_id=None)
+        await uow.apply()
+    return group.__reference__
+
+
+class CreateGroupCommand(BaseCommand):
+    parent_id: UUID
+    name: str
 
 
 @collection.register
@@ -47,13 +53,16 @@ async def create_group(
         uow_builder: UnitOfWorkBuilder[IGroupRepository],
 ):
     async with uow_builder() as uow:
-        group = uow.repository.create(name=cmd.name)
-        if cmd.parent_id:
-            parent = await uow.repository.get(cmd.parent_id)
-            parent.add_member(group.state.name, group.__reference__)
-            group.reassign(parent_id=parent.__reference__)
+        parent = await uow.repository.get(cmd.parent_id)
+        group = uow.repository.create(name=cmd.name, parent_id=parent.__reference__)
+        parent.add_member(group.state.name, group.__reference__)
         await uow.apply()
     return group.__reference__
+
+
+class RenameGroupCommand(BaseCommand):
+    name: str
+    reference: UUID
 
 
 @collection.register
@@ -65,6 +74,10 @@ async def rename_group(
         group = await uow.repository.get(reference=cmd.reference)
         group.rename(cmd.name)
         await uow.apply()
+
+
+class ProduceGroupCommand(BaseCommand):
+    reference: UUID
 
 
 @collection.register

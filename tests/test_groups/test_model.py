@@ -8,11 +8,23 @@ from group.model import (
 )
 
 
-def test_init():
+def test_create():
     group = Group.create(name='test')
     state = group.state
     assert state.name == 'test'
     assert state.members == {}
+    events = list(group.collect_events())
+    event = events.pop()
+    assert isinstance(event, GroupCreated)
+    assert event.name == 'test'
+
+def test_create_with_parent_id():
+    parent_id = uuid4()
+    group = Group.create(name='test', parent_id=parent_id)
+    state = group.state
+    assert state.name == 'test'
+    assert state.members == {}
+    assert state.parent_id == parent_id
     events = list(group.collect_events())
     event = events.pop()
     assert isinstance(event, GroupCreated)

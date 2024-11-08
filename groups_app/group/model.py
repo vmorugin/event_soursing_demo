@@ -24,12 +24,13 @@ class GroupDomainEvent(DomainEvent, domain='group'):
 
 class GroupCreated(GroupDomainEvent):
     name: str
+    parent_id: UUID | None
 
     def mutate(self, _: None) -> Group:
         group = Group(
             __reference__=self.reference,
             __version__=self.version,
-            state=GroupState(name=self.name)
+            state=GroupState(name=self.name, parent_id=self.parent_id)
         )
         return group
 
@@ -85,11 +86,12 @@ class Group(RootEntity, domain='group'):
     state: GroupState
 
     @classmethod
-    def create(cls, name: str) -> 'Group':
+    def create(cls, name: str, parent_id: ReferenceType | None) -> 'Group':
         event = GroupCreated(
             reference=uuid4(),
             version=1,
-            name=name
+            name=name,
+            parent_id=parent_id,
         )
         group = event.mutate(None)
         group._events.append(event)
