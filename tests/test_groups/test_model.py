@@ -47,15 +47,15 @@ class TestModel:
 
     def test_mutate(self):
         event = GroupCreated(
-            reference=uuid4(),
-            version=1,
+            originator_reference=uuid4(),
+            originator_version=1,
             name='test',
             parent_id=None,
         )
         group = event.mutate(None)
         assert isinstance(group, Group)
         assert group.__version__ == 1
-        assert group.__reference__ == event.reference
+        assert group.__reference__ == event.originator_reference
         assert group.state.name == 'test'
 
     def test_rename(self, create_group):

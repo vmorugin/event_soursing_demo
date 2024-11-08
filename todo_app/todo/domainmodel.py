@@ -167,7 +167,7 @@ def _(event: ItemMarkedDown, todo: Todo) -> Todo:
 def _(event: Snapshot, _: None):
     return Todo(
         id=event.state["id"],
-        version=event.state["version"],
+        version=event.state["originator_version"],
         created_on=event.state["created_on"],
         modified_on=event.state["modified_on"],
         title=event.state["title"],

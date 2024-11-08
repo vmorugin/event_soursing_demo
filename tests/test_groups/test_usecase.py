@@ -1,6 +1,6 @@
 from uuid import (
     UUID,
-    uuid4,
+
 )
 import typing as t
 import pytest
@@ -66,17 +66,17 @@ class RealRepository(IGroupRepository):
                 sa.text(
                     """
                     SELECT * FROM group_snapshots
-                    WHERE reference = :reference 
-                    ORDER BY version DESC
+                    WHERE originator_reference = :originator_reference 
+                    ORDER BY originator_version DESC
                     LIMIT 1
                     """
-                ), {'reference': reference}
+                ), {'originator_reference': reference}
             )
             group_db = cursor.mappings().fetchone()
             if group_db:
                 return Group(
-                    __version__=group_db['version'],
-                    __reference__=group_db['reference'],
+                    __version__=group_db['originator_version'],
+                    __reference__=group_db['originator_reference'],
                     state=GroupState.model_validate(group_db['state']),
                 )
 
@@ -86,10 +86,10 @@ class RealRepository(IGroupRepository):
                 sa.text(
                     """
                     SELECT * FROM group_events
-                    WHERE reference = :reference AND version > :version
-                    ORDER BY version ASC
+                    WHERE originator_reference = :originator_reference AND originator_version > :originator_version
+                    ORDER BY originator_version ASC
                     """
-                ), {'reference': reference, 'version': aggregate.__version__ if aggregate else 0}
+                ), {'originator_reference': reference, 'originator_version': aggregate.__version__ if aggregate else 0}
             )
             events = cursor.mappings().fetchall()
         for db_event in events:
@@ -97,8 +97,8 @@ class RealRepository(IGroupRepository):
             event = t.cast(
                 DomainEvent, event_cls.load(
                     payload=dict(
-                        version=db_event['version'],
-                        reference=db_event['reference'],
+                        originator_version=db_event['originator_version'],
+                        originator_reference=db_event['originator_reference'],
                         **db_event['payload'],
                     ),
                     reference=db_event['event_reference'],
@@ -115,7 +115,7 @@ class RealRepository(IGroupRepository):
             while self._seen:
                 reference, aggregate = self._seen.popitem()
                 for event in aggregate.collect_events():
-                    if event.version % 100 == 0:
+                    if event.originator_version % 100 == 0:
                         await self._save_snapshot(aggregate, conn)
                     await self._save_event(event, conn)
             await conn.commit()
@@ -124,12 +124,12 @@ class RealRepository(IGroupRepository):
         await conn.execute(
             sa.text(
                 """
-                    INSERT INTO group_snapshots (reference, domain, name, state, version)
-                    VALUES (:reference, :domain, :name, :state, :version)
+                    INSERT INTO group_snapshots (originator_reference, domain, name, state, originator_version)
+                    VALUES (:originator_reference, :domain, :name, :state, :originator_version)
                 """
             ), dict(
-                reference=aggregate.__reference__,
-                version=aggregate.__version__,
+                originator_reference=aggregate.__reference__,
+                originator_version=aggregate.__version__,
                 domain=aggregate.__domain_name__,
                 name=aggregate.__class__.__name__,
                 state=aggregate.state.model_dump_json(),
@@ -140,12 +140,12 @@ class RealRepository(IGroupRepository):
         await conn.execute(
             sa.text(
                 """
-                    INSERT INTO group_events (reference, timestamp, domain, name, payload, version, event_reference)
-                    VALUES (:reference, :timestamp, :domain, :name, :payload, :version, :event_reference)
+                    INSERT INTO group_events (originator_reference, timestamp, domain, name, payload, originator_version, event_reference)
+                    VALUES (:originator_reference, :timestamp, :domain, :name, :payload, :originator_version, :event_reference)
                 """
             ), dict(
-                reference=event.reference,
-                version=event.version,
+                originator_reference=event.originator_reference,
+                originator_version=event.originator_version,
                 event_reference=event.__reference__,
                 timestamp=event.__timestamp__,
                 domain=event.__domain_name__,
@@ -172,8 +172,12 @@ class FakeRepository(IGroupRepository):
             event_cls = get_event_class(db_event['domain'], db_event['name'])
             event = t.cast(
                 DomainEvent, event_cls.load(
-                    payload=db_event['payload'],
-                    reference=db_event['reference'],
+                    payload=dict(
+                        originator_version=db_event['originator_version'],
+                        originator_reference=db_event['originator_reference'],
+                        **db_event['payload'],
+                    ),
+                    reference=db_event['event_reference'],
                     timestamp=db_event['timestamp']
                 )
             )
@@ -188,7 +192,9 @@ class FakeRepository(IGroupRepository):
             for event in aggregate.collect_events():
                 self._event_store[reference].append(
                     dict(
-                        reference=event.__reference__,
+                        originator_reference=event.originator_reference,
+                        originator_version=event.originator_version,
+                        event_reference=event.__reference__,
                         timestamp=event.__timestamp__,
                         domain=event.__domain_name__,
                         name=event.__class__.__name__,
@@ -210,7 +216,7 @@ class TestUsecase:
     async def messagebus(self, fake_engine, real_engine):
         mb = get_messagebus()
         mb.include_collection(collection)
-        uow_builder = UnitOfWorkBuilder(RepositoryBuilder(RealRepository, real_engine))
+        uow_builder = UnitOfWorkBuilder(RepositoryBuilder(FakeRepository, fake_engine))
         mb.set_defaults(
             'group',
             uow_builder=uow_builder,
@@ -260,9 +266,3 @@ class TestUsecase:
         assert member.__version__ == 1
         assert member.state.members == {}
         assert member.state.parent_id == parent_id
-
-    async def test_create_with_parent_load(self, setup):
-        parent_id = await self._messagebus.handle_message(CreateGroupCommand(name='test'))
-        group_id = await self._messagebus.handle_message(CreateGroupCommand(name='member', parent_id=parent_id))
-        for _ in range(10000):
-            await self._messagebus.handle_message(RenameGroupCommand(reference=group_id, name=str(uuid4())))

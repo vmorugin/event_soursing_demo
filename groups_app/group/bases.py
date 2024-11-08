@@ -49,37 +49,37 @@ class _DomainEventMeta(BaseDomainMessageMeta, AbstractEventMeta):
 
 def set_version(entity: RootEntity, version: int):
     """
-    Set the version of the root entity
+    Set the originator_version of the root entity
 
     Attributes:
-        entity (RootEntity): The root entity object whose version needs to be set.
+        entity (RootEntity): The root entity object whose originator_version needs to be set.
 
     """
     if isinstance(entity.__pydantic_private__, dict):
         if old_version := entity.__pydantic_private__.get("_RootEntity__version"):
-            assert version > old_version, "New version must be not less then current"
+            assert version > old_version, "New originator_version must be not less then current"
         entity.__pydantic_private__["_RootEntity__version"] = version
 
 
 class DomainEvent(BaseDomainMessage, AbstractEvent, metaclass=_DomainEventMeta):
-    reference: UUID = Field(exclude=True)
-    version: Version = Field(exclude=True)
+    originator_reference: UUID = Field(exclude=True)
+    originator_version: Version = Field(exclude=True)
 
     def mutate(self, aggregate: RootEntity | None) -> RootEntity | None:
         assert aggregate is not None
 
         # Check this event belongs to this aggregate.
-        assert aggregate.__reference__ == self.reference
+        assert aggregate.__reference__ == self.originator_reference
 
         # Check this event is the next in its sequence.
         next_version = aggregate.__version__ + 1
-        assert self.version == next_version
+        assert self.originator_version == next_version
 
         # Call apply() before mutating values, in case exception is raised.
         self.apply(aggregate)
 
-        # Update the aggregate's 'version' number.
-        set_version(aggregate, self.version)
+        # Update the aggregate's 'originator_version' number.
+        set_version(aggregate, self.originator_version)
 
         # Update the aggregate's 'modified on' time.
         # aggregate.modified_on = self.timestamp
@@ -141,10 +141,10 @@ class RootEntity(
     @property
     def __version__(self) -> Version:
         """
-        Get the current version of the root entity.
+        Get the current originator_version of the root entity.
 
         Returns:
-             Version: The current version of the root entity.
+             Version: The current originator_version of the root entity.
         """
         return self.__version
 
@@ -152,8 +152,8 @@ class RootEntity(
         increment_version(self)
         event_class = get_event_class(self.__domain_name__, __name)
         event = event_class(
-            reference=self.__reference__,
-            version=self.__version__,
+            originator_reference=self.__reference__,
+            originator_version=self.__version__,
             **payload,
         )
         event.apply(self)

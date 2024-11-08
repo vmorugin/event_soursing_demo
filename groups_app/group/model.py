@@ -28,8 +28,8 @@ class GroupCreated(GroupDomainEvent):
 
     def mutate(self, _: None) -> Group:
         group = Group(
-            __reference__=self.reference,
-            __version__=self.version,
+            __reference__=self.originator_reference,
+            __version__=self.originator_version,
             state=GroupState(name=self.name, parent_id=self.parent_id)
         )
         return group
@@ -88,8 +88,8 @@ class Group(RootEntity, domain='group'):
     @classmethod
     def create(cls, name: str, parent_id: ReferenceType | None) -> 'Group':
         event = GroupCreated(
-            reference=uuid4(),
-            version=1,
+            originator_reference=uuid4(),
+            originator_version=1,
             name=name,
             parent_id=parent_id,
         )
