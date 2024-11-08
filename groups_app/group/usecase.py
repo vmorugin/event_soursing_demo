@@ -27,24 +27,10 @@ class BaseCommand(DomainCommand, domain='group'):
     pass
 
 
-class CreateRootGroupCommand(BaseCommand):
-    name: str
-
-
-@collection.register
-async def create_root_group(
-        cmd: CreateRootGroupCommand,
-        uow_builder: UnitOfWorkBuilder[IGroupRepository],
-):
-    async with uow_builder() as uow:
-        group = uow.repository.create(name=cmd.name, parent_id=None)
-        await uow.apply()
-    return group.__reference__
-
-
 class CreateGroupCommand(BaseCommand):
-    parent_id: UUID
+    parent_id: UUID | None = None
     name: str
+
 
 
 @collection.register
@@ -53,9 +39,10 @@ async def create_group(
         uow_builder: UnitOfWorkBuilder[IGroupRepository],
 ):
     async with uow_builder() as uow:
-        parent = await uow.repository.get(cmd.parent_id)
-        group = uow.repository.create(name=cmd.name, parent_id=parent.__reference__)
-        parent.add_member(group.state.name, group.__reference__)
+        group = uow.repository.create(name=cmd.name, parent_id=cmd.parent_id)
+        if cmd.parent_id:
+            parent = await uow.repository.get(cmd.parent_id)
+            parent.add_member(group.state.name, group.__reference__)
         await uow.apply()
     return group.__reference__
 

@@ -3,6 +3,7 @@ from typing import (
     Generic,
     Iterable,
 )
+from uuid import UUID
 
 from d3m.core import (
     AbstractEvent,
@@ -30,6 +31,7 @@ from d3m.domain.entities import (
     _EntityMeta,
     increment_version,
 )
+from pydantic import Field
 from pydantic._internal._model_construction import ModelMetaclass
 
 
@@ -60,8 +62,8 @@ def set_version(entity: RootEntity, version: int):
 
 
 class DomainEvent(BaseDomainMessage, AbstractEvent, metaclass=_DomainEventMeta):
-    reference: _ReferenceType
-    version: Version
+    reference: UUID = Field(exclude=True)
+    version: Version = Field(exclude=True)
 
     def mutate(self, aggregate: RootEntity | None) -> RootEntity | None:
         assert aggregate is not None
