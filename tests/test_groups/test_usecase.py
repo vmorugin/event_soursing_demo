@@ -58,7 +58,26 @@ class RealRepository(IGroupRepository):
 
     async def get(self, reference: UUID) -> Group:
         snapshot = await self._get_snapshot(reference)
-        return await self._get_events(snapshot, reference)
+        events = await self._get_events(reference, version=snapshot.__version__ if snapshot else 0)
+        if not snapshot and not events:
+            raise Exception("Not found aggregate")  # todo: Exception
+        for db_event in events:
+            event_cls = get_event_class(db_event['domain'], db_event['name'])
+            event = t.cast(
+                DomainEvent, event_cls.load(
+                    payload=dict(
+                        originator_version=db_event['originator_version'],
+                        originator_reference=db_event['originator_reference'],
+                        **db_event['payload'],
+                    ),
+                    reference=db_event['event_reference'],
+                    timestamp=db_event['timestamp']
+                )
+            )
+            snapshot = event.mutate(snapshot)
+        group = t.cast(Group, snapshot)
+        self._seen[group.__reference__] = group
+        return group
 
     async def _get_snapshot(self, reference: UUID) -> Group | None:
         async with self._engine.begin() as conn:
@@ -80,7 +99,7 @@ class RealRepository(IGroupRepository):
                     state=GroupState.model_validate(group_db['state']),
                 )
 
-    async def _get_events(self, aggregate: Group | None, reference: UUID):
+    async def _get_events(self, reference: UUID, version: int):
         async with self._engine.begin() as conn:
             cursor: CursorResult = await conn.execute(
                 sa.text(
@@ -89,26 +108,9 @@ class RealRepository(IGroupRepository):
                     WHERE originator_reference = :originator_reference AND originator_version > :originator_version
                     ORDER BY originator_version ASC
                     """
-                ), {'originator_reference': reference, 'originator_version': aggregate.__version__ if aggregate else 0}
+                ), {'originator_reference': reference, 'originator_version': version}
             )
-            events = cursor.mappings().fetchall()
-        for db_event in events:
-            event_cls = get_event_class(db_event['domain'], db_event['name'])
-            event = t.cast(
-                DomainEvent, event_cls.load(
-                    payload=dict(
-                        originator_version=db_event['originator_version'],
-                        originator_reference=db_event['originator_reference'],
-                        **db_event['payload'],
-                    ),
-                    reference=db_event['event_reference'],
-                    timestamp=db_event['timestamp']
-                )
-            )
-            aggregate = event.mutate(aggregate)
-        group = t.cast(Group, aggregate)
-        self._seen[group.__reference__] = group
-        return group
+            return cursor.mappings().fetchall()
 
     async def commit(self) -> None:
         async with self._engine.begin() as conn:
@@ -216,7 +218,7 @@ class TestUsecase:
     async def messagebus(self, fake_engine, real_engine):
         mb = get_messagebus()
         mb.include_collection(collection)
-        uow_builder = UnitOfWorkBuilder(RepositoryBuilder(FakeRepository, fake_engine))
+        uow_builder = UnitOfWorkBuilder(RepositoryBuilder(RealRepository, real_engine))
         mb.set_defaults(
             'group',
             uow_builder=uow_builder,
